@@ -91,15 +91,24 @@ internal class StructStubBuilder(
                     val pointedType = fieldRefType.pointedType.toStubIrType()
                     val pointedTypeArgument = TypeArgumentStub(pointedType)
                     if (fieldRefType is TypeMirror.ByValue) {
-                        val kind = PropertyStub.Kind.Var(
-                                PropertyAccessor.Getter.MemberAt(offset, typeArguments = listOf(pointedTypeArgument), hasValueAccessor = true),
-                                PropertyAccessor.Setter.MemberAt(offset, typeArguments = listOf(pointedTypeArgument))
-                        )
+                        val getter: PropertyAccessor.Getter
+                        val setter: PropertyAccessor.Setter
+                        when (context.generationMode) {
+                            GenerationMode.SOURCE_CODE -> {
+                                getter = PropertyAccessor.Getter.MemberAt(offset, typeArguments = listOf(pointedTypeArgument), hasValueAccessor = true)
+                                setter = PropertyAccessor.Setter.MemberAt(offset, typeArguments = listOf(pointedTypeArgument))
+                            }
+                            GenerationMode.METADATA -> {
+                                getter = PropertyAccessor.Getter.ExternalGetter(listOf(AnnotationStub.CStruct.MemberAt(offset, true)))
+                                setter = PropertyAccessor.Setter.ExternalSetter(listOf(AnnotationStub.CStruct.MemberAt(offset, true)))
+                            }
+                        }
+                        val kind = PropertyStub.Kind.Var(getter, setter)
                         PropertyStub(field.name, fieldRefType.argType.toStubIrType(), kind, origin = origin)
                     } else {
                         val accessor = when (context.generationMode) {
                             GenerationMode.SOURCE_CODE -> PropertyAccessor.Getter.MemberAt(offset, hasValueAccessor = false)
-                            GenerationMode.METADATA -> PropertyAccessor.Getter.ExternalGetter(listOf(AnnotationStub.CStruct.MemberAt(offset)))
+                            GenerationMode.METADATA -> PropertyAccessor.Getter.ExternalGetter(listOf(AnnotationStub.CStruct.MemberAt(offset, false)))
                         }
                         val kind = PropertyStub.Kind.Val(accessor)
                         PropertyStub(field.name, pointedType, kind, origin = origin)
@@ -636,7 +645,10 @@ internal class GlobalStubBuilder(
                 }
                 is TypeMirror.ByRef -> {
                     kotlinType = mirror.pointedType
-                    val getter = PropertyAccessor.Getter.InterpretPointed(global.name, kotlinType.toStubIrType())
+                    val getter = when (context.generationMode) {
+                        GenerationMode.SOURCE_CODE -> PropertyAccessor.Getter.InterpretPointed(global.name, kotlinType.toStubIrType())
+                        GenerationMode.METADATA -> TODO()
+                    }
                     kind = PropertyStub.Kind.Val(getter)
                 }
             }

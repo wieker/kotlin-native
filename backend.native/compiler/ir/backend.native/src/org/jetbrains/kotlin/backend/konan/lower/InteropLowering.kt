@@ -26,6 +26,7 @@ import org.jetbrains.kotlin.builtins.UnsignedTypes
 import org.jetbrains.kotlin.descriptors.*
 import org.jetbrains.kotlin.ir.IrElement
 import org.jetbrains.kotlin.ir.IrStatement
+import org.jetbrains.kotlin.ir.UNDEFINED_OFFSET
 import org.jetbrains.kotlin.ir.builders.*
 import org.jetbrains.kotlin.ir.declarations.*
 import org.jetbrains.kotlin.ir.declarations.impl.IrFunctionImpl
@@ -863,26 +864,8 @@ private class InteropTransformer(val context: Context, override val irFile: IrFi
             context.llvmImports.add(function.llvmSymbolOrigin)
             return generateWithStubs { generateCCall(expression, builder, isInvoke = false) }
         }
-        // TODO: Add support for getters and setter.
         if (function.annotations.hasAnnotation(RuntimeNames.memberAt)) {
-            //  1. offset = get offset from annotation.
-            //  2. base = reinterpret the receiver to a long value.
-            //  3. return interpretNullablePointer(base + offset).
-            val call = expression
-            val propertyGetter = call.symbol.owner
-            val memberAt = propertyGetter.getAnnotation(RuntimeNames.memberAt)!!
-            val offset = (memberAt.getValueArgument(0) as IrConst<Long>)
-            val base = builder.irCall(symbols.interopNativePointedRawPtrGetter).also {
-                it.dispatchReceiver = call.dispatchReceiver!!
-            }
-            val fieldPointer = builder.irCall(symbols.nativePtrType.getClass()!!.functions.single { it.name.identifier == "plus" }).also {
-                it.dispatchReceiver = base
-                it.putValueArgument(0, offset)
-            }
-            return builder.irCall(symbols.interopInterpretNullablePointed).also {
-                it.putValueArgument(0, fieldPointer)
-                it.putTypeArgument(0, propertyGetter.returnType)
-            }
+            return generateWithStubs { generateMemberAt(expression, builder) }
         }
 
         val intrinsicType = tryGetIntrinsicType(expression)

@@ -75,6 +75,11 @@ internal class CStructClassGenerator(
                     irGetter.correspondingPropertySymbol = irProperty.symbol
                 }
             }
+            irProperty.setter = propertyDescriptor.setter?.let { setterDescriptor ->
+                declareSimpleIrFunction(setterDescriptor).also { irSetter ->
+                    irSetter.correspondingPropertySymbol = irProperty.symbol
+                }
+            }
         }
         return irProperty
     }

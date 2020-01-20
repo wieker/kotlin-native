@@ -115,6 +115,8 @@ internal class KonanSymbols(
 
     val objCMethodImp = symbolTable.referenceClass(context.interopBuiltIns.objCMethodImp)
 
+    val typedIntrinsic = topLevelClass(RuntimeNames.typedIntrinsicAnnotation)
+
     val onUnhandledException = internalFunction("OnUnhandledException")
 
     val interopNativePointedGetRawPointer =
@@ -195,6 +197,8 @@ internal class KonanSymbols(
             symbolTable.referenceSimpleFunction(context.interopBuiltIns.CreateNSStringFromKString)
 
     val interopObjCGetSelector = interopFunction("objCGetSelector")
+
+    val nativeMemUtils = symbolTable.referenceClass(context.interopBuiltIns.nativeMemUtils)
 
     val objCExportTrapOnUndeclaredException =
             symbolTable.referenceSimpleFunction(context.builtIns.kotlinNativeInternal.getContributedFunctions(

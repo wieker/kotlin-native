@@ -7,7 +7,6 @@ package org.jetbrains.kotlin.backend.konan.ir.interop.cenum
 import org.jetbrains.kotlin.backend.konan.InteropBuiltIns
 import org.jetbrains.kotlin.backend.konan.ir.interop.DescriptorToIrTranslationMixin
 import org.jetbrains.kotlin.backend.konan.objcexport.getErasedTypeClass
-import org.jetbrains.kotlin.descriptors.ClassDescriptor
 import org.jetbrains.kotlin.descriptors.PropertyDescriptor
 import org.jetbrains.kotlin.incremental.components.NoLookupLocation
 import org.jetbrains.kotlin.ir.builders.irBlockBody
@@ -33,8 +32,7 @@ internal class CEnumVarValuePropertyGenerator(
         interopBuiltIns: InteropBuiltIns
 ) : DescriptorToIrTranslationMixin {
 
-    private val nativeMemUtilsDesc: ClassDescriptor = interopBuiltIns.packageScope
-            .getContributedClassifier(Name.identifier("nativeMemUtils"), NoLookupLocation.FROM_BACKEND) as ClassDescriptor
+    private val nativeMemUtilsDesc = interopBuiltIns.nativeMemUtils
 
     private val nativeMemUtilsSymbol = symbolTable.referenceClass(nativeMemUtilsDesc)
 

@@ -4,7 +4,7 @@ package kotlinx.cinterop.internal
 @Retention(AnnotationRetention.BINARY)
 annotation class CStruct(val spelling: String) {
     @Retention(AnnotationRetention.BINARY)
-    annotation class MemberAt(val offset: Long)
+    annotation class MemberAt(val offset: Long, val isValueType: Boolean)
 
     @Retention(AnnotationRetention.BINARY)
     annotation class VarType(val size: Long, val align: Int)

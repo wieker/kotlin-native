@@ -329,9 +329,9 @@ internal class IntrinsicGenerator(private val environment: IntrinsicGeneratorEnv
     private fun FunctionGenerationContext.emitWritePrimitive(callSite: IrCall, args: List<LLVMValueRef>): LLVMValueRef {
         val function = callSite.symbol.owner
         val pointerType = pointerType(codegen.getLLVMType(function.valueParameters.last().type))
-        val rawPointer = args[1]
+        val rawPointer = args[args.lastIndex - 1]
         val pointer = bitcast(pointerType, rawPointer)
-        store(args[2], pointer)
+        store(args.last(), pointer)
         return codegen.theUnitInstanceRef.llvm
     }
 
