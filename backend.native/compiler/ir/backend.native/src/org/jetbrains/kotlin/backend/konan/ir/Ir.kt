@@ -195,6 +195,9 @@ internal class KonanSymbols(
     val interopInterpretNullablePointed =
             symbolTable.referenceSimpleFunction(context.interopBuiltIns.interpretNullablePointed)
 
+    val interopInterpretCPointer =
+            symbolTable.referenceSimpleFunction(context.interopBuiltIns.interpretCPointer)
+
     val interopCreateNSStringFromKString =
             symbolTable.referenceSimpleFunction(context.interopBuiltIns.CreateNSStringFromKString)
 

@@ -1681,8 +1681,12 @@ internal fun KotlinStubs.generateGlobalAccess(callSite: IrCall, builder: IrBuild
         it.putValueArgument(0, builder.irString(cGlobalName))
     }
     val returnType = callSite.type
-    return builder.irCall(symbols.interopInterpretNullablePointed).also {
+    val fn = if (returnType.isSubtypeOfClass(symbols.interopCPointer)) {
+        symbols.interopInterpretCPointer
+    } else {
+        symbols.interopInterpretNullablePointed
+    }
+    return builder.irCall(fn).also {
         it.putValueArgument(0, globalPointer)
-        it.putTypeArgument(0, returnType)
     }
 }

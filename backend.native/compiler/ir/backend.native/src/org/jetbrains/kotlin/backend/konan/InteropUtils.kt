@@ -95,6 +95,7 @@ internal class InteropBuiltIns(builtIns: KonanBuiltIns) {
     val interpretObjCPointerOrNull = packageScope.getContributedFunctions("interpretObjCPointerOrNull").single()
     val interpretObjCPointer = packageScope.getContributedFunctions("interpretObjCPointer").single()
     val interpretNullablePointed = packageScope.getContributedFunctions("interpretNullablePointed").single()
+    val interpretCPointer = packageScope.getContributedFunctions("interpretCPointer").single()
 
     val interopPointerToGlobal = packageScope.getContributedFunctions("pointerToGlobal").single()
 
