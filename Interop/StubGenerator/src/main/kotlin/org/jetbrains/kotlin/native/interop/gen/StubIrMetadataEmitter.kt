@@ -456,6 +456,7 @@ private class MappingExtensions(
                 val kmType = type.map()
                 if (isVararg) {
                     km.varargElementType = kmType
+                    km.type = ClassifierStubType(Classifier.topLevel("kotlin", "Array"), listOf(TypeArgumentStub(type))).map()
                 } else {
                     km.type = kmType
                 }
