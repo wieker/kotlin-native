@@ -42,6 +42,9 @@ fun <T : CVariable> typeOf(): CVariable.Type = throw Error("typeOf() is called w
 @TypedIntrinsic(IntrinsicType.IDENTITY)
 external fun <T : NativePointed> interpretNullablePointed(ptr: NativePtr): T?
 
+@TypedIntrinsic(IntrinsicType.GLOBAL_PTR)
+external fun interopPointerToGlobal(globalName: String): NativePointed
+
 /**
  *  Performs type cast of the [CPointer] from the given raw pointer.
  */

@@ -220,6 +220,9 @@ sealed class AnnotationStub(val classifier: Classifier) {
     class CEnumVarTypeSize(val size: Int) :
             AnnotationStub(Classifier.topLevel(cinteropInternalPackage, "CEnumVarTypeSize"))
 
+    class CGlobalAccess(val globalName: String) :
+            AnnotationStub(Classifier.topLevel(cinteropInternalPackage, "CGlobalAccess"))
+
     private companion object {
         val cCallClassifier = Classifier.topLevel(cinteropInternalPackage, "CCall")
         val cStructClassifier = Classifier.topLevel(cinteropInternalPackage, "CStruct")

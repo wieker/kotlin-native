@@ -393,6 +393,9 @@ private class MappingExtensions(
                     ("size" to KmAnnotationArgument.LongValue(size)),
                     ("align" to KmAnnotationArgument.IntValue(align))
             )
+            is AnnotationStub.CGlobalAccess -> mapOfNotNull(
+                    ("globalName" to globalName).asAnnotationArgument()
+            )
         }
         return KmAnnotation(classifier.fqNameSerialized, args)
     }

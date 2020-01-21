@@ -9,6 +9,7 @@ import org.jetbrains.kotlin.backend.common.lower.irNot
 import org.jetbrains.kotlin.backend.konan.KonanFqNames
 import org.jetbrains.kotlin.backend.konan.PrimitiveBinaryType
 import org.jetbrains.kotlin.backend.konan.RuntimeNames
+import org.jetbrains.kotlin.backend.konan.descriptors.getAnnotationStringValue
 import org.jetbrains.kotlin.backend.konan.ir.*
 import org.jetbrains.kotlin.backend.konan.isObjCMetaClass
 import org.jetbrains.kotlin.builtins.KotlinBuiltIns
@@ -1653,9 +1654,6 @@ private fun KotlinStubs.generateWriteMemory(builder: IrBuilderWithScope, fieldPo
 }
 
 internal fun KotlinStubs.generateMemberAt(callSite: IrCall, builder: IrBuilderWithScope): IrExpression {
-    //  1. offset = get offset from annotation.
-    //  2. base = reinterpret the receiver to a long value.
-    //  3. return interpretNullablePointer(base + offset).
     val accessor = callSite.symbol.owner
     val memberAt = accessor.getAnnotation(RuntimeNames.memberAt)!!
     val offset = (memberAt.getValueArgument(0) as IrConst<Long>)
@@ -1674,5 +1672,24 @@ internal fun KotlinStubs.generateMemberAt(callSite: IrCall, builder: IrBuilderWi
         accessor.isSetter -> generateWriteMemory(builder, fieldPointer, callSite)
         accessor.isGetter -> generateReadMemory(builder, fieldPointer, isValueType, callSite)
         else -> error("Unexpected function: ${accessor.name}")
+    }
+}
+
+internal fun KotlinStubs.generateGlobalAccess(callSite: IrCall, builder: IrBuilderWithScope): IrExpression {
+    val cGlobalName = callSite.symbol.owner.getAnnotation(RuntimeNames.cGlobalAccess)!!.getAnnotationStringValue()!!
+
+    val intermediateVariable = getUniqueCName("globalAccess")
+    this.addC(listOf(
+            "extern const void* $cGlobalName;",
+            "const void* $intermediateVariable __asm(\"$intermediateVariable\");",
+            "const void* $intermediateVariable = &$cGlobalName;"
+    ))
+    val globalPointer = builder.irCall(symbols.interopPointerToGlobal).also {
+        it.putValueArgument(0, builder.irString(intermediateVariable))
+    }
+    val returnType = callSite.type
+    return builder.irCall(symbols.interopInterpretNullablePointed).also {
+        it.putValueArgument(0, globalPointer)
+        it.putTypeArgument(0, returnType)
     }
 }

@@ -4,6 +4,10 @@ package kotlinx.cinterop.internal
 @Retention(AnnotationRetention.BINARY)
 annotation class CStruct(val spelling: String) {
     @Retention(AnnotationRetention.BINARY)
+    @Target(
+            AnnotationTarget.PROPERTY_GETTER,
+            AnnotationTarget.PROPERTY_SETTER
+    )
     annotation class MemberAt(val offset: Long, val isValueType: Boolean)
 
     @Retention(AnnotationRetention.BINARY)
@@ -75,3 +79,6 @@ public annotation class CEnumEntryAlias(val entryName: String)
 @Target(AnnotationTarget.CLASS)
 @Retention(AnnotationRetention.BINARY)
 public annotation class CEnumVarTypeSize(val size: Int)
+
+@Retention(AnnotationRetention.BINARY)
+annotation class CGlobalAccess(val globalName: String)

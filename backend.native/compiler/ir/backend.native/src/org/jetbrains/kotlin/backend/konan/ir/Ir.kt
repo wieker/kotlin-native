@@ -133,6 +133,8 @@ internal class KonanSymbols(
     val interopCValueRead = symbolTable.referenceSimpleFunction(context.interopBuiltIns.cValueRead)
     val interopAllocType = symbolTable.referenceSimpleFunction(context.interopBuiltIns.allocType)
 
+    val interopPointerToGlobal = symbolTable.referenceSimpleFunction(context.interopBuiltIns.interopPointerToGlobal)
+
     // Hack to pre-load CEnum class.
     val interopCEnum = symbolTable.referenceClass(context.interopBuiltIns.cEnum)
     val interopCPrimitiveVar = symbolTable.referenceClass(context.interopBuiltIns.cPrimitiveVar)

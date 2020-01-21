@@ -601,9 +601,17 @@ internal class GlobalStubBuilder(
         val kind: PropertyStub.Kind
         if (unwrappedType is ArrayType) {
             kotlinType = (mirror as TypeMirror.ByValue).valueType
-            val getter = PropertyAccessor.Getter.SimpleGetter()
-            val extra = BridgeGenerationInfo(global.name, mirror.info)
-            context.bridgeComponentsBuilder.arrayGetterBridgeInfo[getter] = extra
+            val getter = when (context.generationMode) {
+                GenerationMode.SOURCE_CODE -> {
+                    PropertyAccessor.Getter.SimpleGetter().also {
+                        val extra = BridgeGenerationInfo(global.name, mirror.info)
+                        context.bridgeComponentsBuilder.arrayGetterBridgeInfo[it] = extra
+                    }
+                }
+                GenerationMode.METADATA -> PropertyAccessor.Getter.ExternalGetter(listOf(
+                        AnnotationStub.CGlobalAccess(global.name)
+                ))
+            }
             kind = PropertyStub.Kind.Val(getter)
         } else {
             when (mirror) {
@@ -647,7 +655,9 @@ internal class GlobalStubBuilder(
                     kotlinType = mirror.pointedType
                     val getter = when (context.generationMode) {
                         GenerationMode.SOURCE_CODE -> PropertyAccessor.Getter.InterpretPointed(global.name, kotlinType.toStubIrType())
-                        GenerationMode.METADATA -> TODO()
+                        GenerationMode.METADATA -> PropertyAccessor.Getter.ExternalGetter(listOf(
+                                AnnotationStub.CGlobalAccess(global.name)
+                        ))
                     }
                     kind = PropertyStub.Kind.Val(getter)
                 }

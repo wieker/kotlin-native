@@ -78,6 +78,7 @@ class IntrinsicType {
         const val INTEROP_NARROW                = "INTEROP_NARROW"
         const val INTEROP_STATIC_C_FUNCTION     = "INTEROP_STATIC_C_FUNCTION"
         const val INTEROP_FUNPTR_INVOKE         = "INTEROP_FUNPTR_INVOKE"
+        const val GLOBAL_PTR                    = "GLOBAL_PTR"
 
         // Worker
         const val WORKER_EXECUTE                = "WORKER_EXECUTE"

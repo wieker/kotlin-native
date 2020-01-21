@@ -88,6 +88,7 @@ internal enum class IntrinsicType {
     INTEROP_STATIC_C_FUNCTION,
     INTEROP_FUNPTR_INVOKE,
     INTEROP_MEMORY_COPY,
+    GLOBAL_PTR,
     // Worker
     WORKER_EXECUTE
 }
@@ -246,6 +247,7 @@ internal class IntrinsicGenerator(private val environment: IntrinsicGeneratorEnv
                 IntrinsicType.IDENTITY -> emitIdentity(args)
                 IntrinsicType.GET_CONTINUATION -> emitGetContinuation()
                 IntrinsicType.INTEROP_MEMORY_COPY -> emitMemoryCopy(callSite, args)
+                IntrinsicType.GLOBAL_PTR -> emitGlobalPtr(args)
                 IntrinsicType.RETURN_IF_SUSPENDED,
                 IntrinsicType.INTEROP_BITS_TO_FLOAT,
                 IntrinsicType.INTEROP_BITS_TO_DOUBLE,
@@ -415,6 +417,10 @@ internal class IntrinsicGenerator(private val environment: IntrinsicGeneratorEnv
         println("memcpy at ${callSite}")
         args.map { println(llvm2string(it)) }
         TODO("Implement me")
+    }
+
+    private fun FunctionGenerationContext.emitGlobalPtr(args: List<LLVMValueRef>): LLVMValueRef {
+        LLVMGetNamedGlobal()
     }
 
     private fun FunctionGenerationContext.emitGetClassTypeInfo(callSite: IrCall): LLVMValueRef {

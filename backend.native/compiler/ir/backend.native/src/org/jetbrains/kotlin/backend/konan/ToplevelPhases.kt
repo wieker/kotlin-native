@@ -163,6 +163,7 @@ internal val psiToIrPhase = konanUnitPhase(
                     generatorContext.irBuiltIns
                 )
                 extensions.forEach { extension ->
+
                     extension.generate(module, pluginContext)
                 }
             }

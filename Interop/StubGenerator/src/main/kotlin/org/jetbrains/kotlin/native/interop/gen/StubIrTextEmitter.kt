@@ -501,6 +501,7 @@ class StubIrTextEmitter(
         is AnnotationStub.CEnumVarTypeSize -> error("CEnumVarTypeSize annotation in textual mode is unsupported")
         is AnnotationStub.CStruct.MemberAt -> error("")
         is AnnotationStub.CStruct.VarType -> error("")
+        is AnnotationStub.CGlobalAccess -> error("")
     }
 
     private fun renderEnumEntry(enumEntryStub: EnumEntryStub): String =
