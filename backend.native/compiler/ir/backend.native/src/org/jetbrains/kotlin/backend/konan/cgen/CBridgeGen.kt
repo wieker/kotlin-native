@@ -1677,15 +1677,8 @@ internal fun KotlinStubs.generateMemberAt(callSite: IrCall, builder: IrBuilderWi
 
 internal fun KotlinStubs.generateGlobalAccess(callSite: IrCall, builder: IrBuilderWithScope): IrExpression {
     val cGlobalName = callSite.symbol.owner.getAnnotation(RuntimeNames.cGlobalAccess)!!.getAnnotationStringValue()!!
-
-    val intermediateVariable = getUniqueCName("globalAccess")
-    this.addC(listOf(
-            "extern const void* $cGlobalName;",
-            "const void* $intermediateVariable __asm(\"$intermediateVariable\");",
-            "const void* $intermediateVariable = &$cGlobalName;"
-    ))
     val globalPointer = builder.irCall(symbols.interopPointerToGlobal).also {
-        it.putValueArgument(0, builder.irString(intermediateVariable))
+        it.putValueArgument(0, builder.irString(cGlobalName))
     }
     val returnType = callSite.type
     return builder.irCall(symbols.interopInterpretNullablePointed).also {

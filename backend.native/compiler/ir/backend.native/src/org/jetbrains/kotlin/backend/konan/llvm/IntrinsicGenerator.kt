@@ -7,6 +7,9 @@ import org.jetbrains.kotlin.backend.konan.descriptors.getAnnotationStringValue
 import org.jetbrains.kotlin.backend.konan.descriptors.isTypedIntrinsic
 import org.jetbrains.kotlin.backend.konan.llvm.objc.genObjCSelector
 import org.jetbrains.kotlin.backend.konan.reportCompilationError
+import org.jetbrains.kotlin.descriptors.konan.CurrentKlibModuleOrigin
+import org.jetbrains.kotlin.descriptors.konan.DeserializedKlibModuleOrigin
+import org.jetbrains.kotlin.descriptors.konan.SyntheticModulesOrigin
 import org.jetbrains.kotlin.ir.IrElement
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrFunction
@@ -186,6 +189,10 @@ internal class IntrinsicGenerator(private val environment: IntrinsicGeneratorEnv
                         suspendFunction.parent as? IrClass // Call non-virtually.
                 )
             }
+            IntrinsicType.GLOBAL_PTR -> {
+                val globalName = (callSite.getValueArgument(0) as IrConst<String>).value
+                codegen.importGlobal(globalName, int8Type, CurrentKlibModuleOrigin)
+            }
             else -> null
         }
     }
@@ -247,7 +254,6 @@ internal class IntrinsicGenerator(private val environment: IntrinsicGeneratorEnv
                 IntrinsicType.IDENTITY -> emitIdentity(args)
                 IntrinsicType.GET_CONTINUATION -> emitGetContinuation()
                 IntrinsicType.INTEROP_MEMORY_COPY -> emitMemoryCopy(callSite, args)
-                IntrinsicType.GLOBAL_PTR -> emitGlobalPtr(args)
                 IntrinsicType.RETURN_IF_SUSPENDED,
                 IntrinsicType.INTEROP_BITS_TO_FLOAT,
                 IntrinsicType.INTEROP_BITS_TO_DOUBLE,
@@ -264,7 +270,8 @@ internal class IntrinsicGenerator(private val environment: IntrinsicGeneratorEnv
                 IntrinsicType.OBJC_INIT_BY,
                 IntrinsicType.COROUTINE_LAUNCHPAD,
                 IntrinsicType.OBJC_GET_SELECTOR,
-                IntrinsicType.IMMUTABLE_BLOB ->
+                IntrinsicType.IMMUTABLE_BLOB,
+                IntrinsicType.GLOBAL_PTR ->
                     reportSpecialIntrinsic(intrinsicType)
             }
 
@@ -417,10 +424,6 @@ internal class IntrinsicGenerator(private val environment: IntrinsicGeneratorEnv
         println("memcpy at ${callSite}")
         args.map { println(llvm2string(it)) }
         TODO("Implement me")
-    }
-
-    private fun FunctionGenerationContext.emitGlobalPtr(args: List<LLVMValueRef>): LLVMValueRef {
-        LLVMGetNamedGlobal()
     }
 
     private fun FunctionGenerationContext.emitGetClassTypeInfo(callSite: IrCall): LLVMValueRef {

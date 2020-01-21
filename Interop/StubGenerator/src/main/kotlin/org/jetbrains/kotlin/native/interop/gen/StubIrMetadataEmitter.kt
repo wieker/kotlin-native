@@ -426,7 +426,10 @@ private class MappingExtensions(
             if (shouldExpandTypeAliases) {
                 // Abbreviated and expanded types have the same nullability.
                 KmType(flags).also { km ->
-                    km.abbreviatedType = KmType(flags).also { it.classifier = typeAliasClassifier }
+                    km.abbreviatedType = KmType(flags).also { abbreviatedType ->
+                        abbreviatedType.classifier = typeAliasClassifier
+                        typeArguments.mapTo(abbreviatedType.arguments) { it.map(shouldExpandTypeAliases) }
+                    }
                     val kmUnderlyingType = underlyingType.map(true)
                     km.arguments += kmUnderlyingType.arguments
                     km.classifier = kmUnderlyingType.classifier
