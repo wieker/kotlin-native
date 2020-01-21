@@ -1590,9 +1590,13 @@ private fun KotlinStubs.generateMemoryAccessor(isRead: Boolean, valueType: IrTyp
 private fun KotlinStubs.generateReadMemory(builder: IrBuilderWithScope, fieldPointer: IrExpression, isValueType: Boolean, callSite: IrCall): IrExpression {
     val returnType = callSite.type
     if (!isValueType) {
-        return builder.irCall(symbols.interopInterpretNullablePointed).also {
+        val fn = if (returnType.isSubtypeOfClass(symbols.interopCPointer)) {
+            symbols.interopInterpretCPointer
+        } else {
+            symbols.interopInterpretNullablePointed
+        }
+        return builder.irCall(fn).also {
             it.putValueArgument(0, fieldPointer)
-            it.putTypeArgument(0, returnType)
         }
     } else {
         val propertyClassifier = returnType.classOrNull!!
