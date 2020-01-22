@@ -279,7 +279,8 @@ fun IrFunction.externalSymbolOrThrow(): String? {
             KonanFqNames.objCMethod,
             KonanFqNames.typedIntrinsic,
             RuntimeNames.cCall,
-            RuntimeNames.memberAt
+            RuntimeNames.memberAt,
+            RuntimeNames.bitField
     )
 
     annotations.findAnnotation(RuntimeNames.symbolNameAnnotation)?.let { return it.getAnnotationStringValue() }

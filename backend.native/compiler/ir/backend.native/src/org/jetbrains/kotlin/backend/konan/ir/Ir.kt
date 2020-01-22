@@ -239,6 +239,9 @@ internal class KonanSymbols(
 
     val reinterpret = internalFunction("reinterpret")
 
+    val readBits = interopFunction("readBits")
+    val writeBits = interopFunction("writeBits")
+
     val ieee754Equals = context.getKonanInternalFunctions("ieee754Equals").map {
         symbolTable.referenceSimpleFunction(it)
     }

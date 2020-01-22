@@ -1628,20 +1628,10 @@ private fun KotlinStubs.generateReadMemory(builder: IrBuilderWithScope, fieldPoi
     }
 }
 
-private fun KotlinStubs.generateWriteMemory(builder: IrBuilderWithScope, fieldPointer: IrExpression, callSite: IrCall): IrExpression {
-    val arg = callSite.getValueArgument(0)!!
-    val propertyClassifier = arg.type.classOrNull!!
-    // TODO: Can we use unsigned types directly?
-    val memoryValueType = if (propertyClassifier in symbols.unsignedIntegerClasses) {
-        symbols.unsignedToSignedOfSameBitWidth.getValue(propertyClassifier)
-    } else {
-        propertyClassifier
-    }.owner.defaultType
-    val memWriteFn = generateMemoryAccessor(isRead = false, valueType = memoryValueType)
-
-    val valueToWrite = if (propertyClassifier in symbols.unsignedIntegerClasses) {
-        val signedPrimitiveClassSymbol = symbols.unsignedToSignedOfSameBitWidth.getValue(propertyClassifier)
-        val conversion = symbols.integerConversions.getValue(propertyClassifier to signedPrimitiveClassSymbol)
+private fun KotlinStubs.convertIfNeeded(arg: IrExpression, builder: IrBuilderWithScope, targetClass: IrClassSymbol): IrExpression {
+    val argClass = arg.type.classOrNull!!
+    return if (argClass != targetClass) {
+        val conversion = symbols.integerConversions.getValue(argClass to targetClass)
         builder.irCall(conversion.owner).apply {
             if (conversion.owner.dispatchReceiverParameter != null) {
                 dispatchReceiver = arg
@@ -1652,6 +1642,20 @@ private fun KotlinStubs.generateWriteMemory(builder: IrBuilderWithScope, fieldPo
     } else {
         arg
     }
+}
+
+
+private fun KotlinStubs.generateWriteMemory(builder: IrBuilderWithScope, fieldPointer: IrExpression, callSite: IrCall): IrExpression {
+    val arg = callSite.getValueArgument(0)!!
+    val propertyClassifier = arg.type.classOrNull!!
+    // TODO: Can we use unsigned types directly?
+    val memoryValueType = if (propertyClassifier in symbols.unsignedIntegerClasses) {
+        symbols.unsignedToSignedOfSameBitWidth.getValue(propertyClassifier)
+    } else {
+        propertyClassifier
+    }.owner.defaultType
+    val memWriteFn = generateMemoryAccessor(isRead = false, valueType = memoryValueType)
+    val valueToWrite = convertIfNeeded(arg, builder, memoryValueType.classOrNull!!)
     val memWrite = builder.irCall(memWriteFn).also {
         it.putValueArgument(0, fieldPointer)
         it.putValueArgument(1, valueToWrite)
@@ -1680,6 +1684,68 @@ internal fun KotlinStubs.generateMemberAt(callSite: IrCall, builder: IrBuilderWi
         else -> error("Unexpected function: ${accessor.name}")
     }
 }
+
+internal fun KotlinStubs.generateBitField(callSite: IrCall, builder: IrBuilderWithScope): IrExpression {
+    val accessor = callSite.symbol.owner
+    val bitField = accessor.getAnnotation(RuntimeNames.bitField)!!
+    val offset = (bitField.getValueArgument(0) as IrConst<Long>)
+    val size = (bitField.getValueArgument(1) as IrConst<Int>)
+    val isSigned = (bitField.getValueArgument(2) as IrConst<Boolean>)
+
+    val base = builder.irCall(symbols.interopNativePointedRawPtrGetter).also {
+        it.dispatchReceiver = callSite.dispatchReceiver!!
+    }
+    return when {
+        accessor.isSetter -> {
+            // Convert argument.
+            val argument = callSite.getValueArgument(0)!!
+
+            val argumentToWrite = if (argument.type.isCEnumType()) {
+                val enumClass = argument.type.getClass()!!
+                val value = enumClass.declarations
+                        .filterIsInstance<IrProperty>()
+                        .single { it.name.asString() == "value" }
+                builder.irCall(value.getter!!).also {
+                    it.dispatchReceiver = argument
+                }
+            } else {
+                argument
+            }
+            val targetClass = symbols.writeBits.owner.valueParameters.last().type.classOrNull!!
+            val valueToWrite = convertIfNeeded(argumentToWrite, builder, targetClass)
+            builder.irCall(symbols.writeBits).also {
+                it.putValueArgument(0, base)
+                it.putValueArgument(1, offset)
+                it.putValueArgument(2, size)
+                it.putValueArgument(3, valueToWrite)
+            }
+        }
+        accessor.isGetter -> {
+            val readValue = builder.irCall(symbols.readBits).also {
+                it.putValueArgument(0, base)
+                it.putValueArgument(1, offset)
+                it.putValueArgument(2, size)
+                it.putValueArgument(3, isSigned)
+            }
+
+            when {
+                accessor.returnType.isCEnumType() -> {
+                    val enumClass = accessor.returnType.getClass()!!
+                    val companionClass = enumClass.declarations.filterIsInstance<IrClass>().single { it.isCompanion }
+                    val byValue = companionClass.simpleFunctions().single { it.name.asString() == "byValue" }
+                    val byValueArg = convertIfNeeded(readValue, builder, byValue.valueParameters.first().type.classOrNull!!)
+                    builder.irCall(byValue).apply {
+                        dispatchReceiver = builder.irGetObject(companionClass.symbol)
+                        putValueArgument(0, byValueArg)
+                    }
+                }
+                else -> convertIfNeeded(readValue, builder, accessor.returnType.classOrNull!!)
+            }
+        }
+        else -> error("Unexpected function: ${accessor.name}")
+    }
+}
+
 
 internal fun KotlinStubs.generateGlobalAccess(callSite: IrCall, builder: IrBuilderWithScope): IrExpression {
     val cGlobalName = callSite.symbol.owner.getAnnotation(RuntimeNames.cGlobalAccess)!!.getAnnotationStringValue()!!

@@ -490,6 +490,7 @@ class StubIrTextEmitter(
         is AnnotationStub.CEnumEntryAlias -> error("CEnumEntryAlias annotation in textual mode is unsupported")
         is AnnotationStub.CEnumVarTypeSize -> error("CEnumVarTypeSize annotation in textual mode is unsupported")
         is AnnotationStub.CStruct.MemberAt -> error("")
+        is AnnotationStub.CStruct.BitField -> error("")
         is AnnotationStub.CStruct.VarType -> error("")
         is AnnotationStub.CGlobalAccess -> error("")
     }

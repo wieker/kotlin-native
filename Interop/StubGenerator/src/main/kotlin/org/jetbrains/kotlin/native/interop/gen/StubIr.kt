@@ -202,6 +202,8 @@ sealed class AnnotationStub(val classifier: Classifier) {
     class CStruct(val struct: String) : AnnotationStub(cStructClassifier) {
         class MemberAt(val offset: Long, val isValueType: Boolean) : AnnotationStub(cStructClassifier.nested("MemberAt"))
 
+        class BitField(val offset: Long, val size: Int, val isSigned: Boolean) : AnnotationStub(cStructClassifier.nested("BitField"))
+
         class VarType(val size: Long, val align: Int) : AnnotationStub(cStructClassifier.nested("VarType"))
     }
 

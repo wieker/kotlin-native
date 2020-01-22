@@ -11,6 +11,13 @@ annotation class CStruct(val spelling: String) {
     annotation class MemberAt(val offset: Long, val isValueType: Boolean)
 
     @Retention(AnnotationRetention.BINARY)
+    @Target(
+            AnnotationTarget.PROPERTY_GETTER,
+            AnnotationTarget.PROPERTY_SETTER
+    )
+    annotation class BitField(val offset: Long, val size: Int, val isSigned: Boolean)
+
+    @Retention(AnnotationRetention.BINARY)
     annotation class VarType(val size: Long, val align: Int)
 }
 

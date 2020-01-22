@@ -396,6 +396,11 @@ private class MappingExtensions(
                     ("offset" to KmAnnotationArgument.LongValue(offset)),
                     ("isValueType" to KmAnnotationArgument.BooleanValue(isValueType))
             )
+            is AnnotationStub.CStruct.BitField -> mapOfNotNull(
+                    ("offset" to KmAnnotationArgument.LongValue(offset)),
+                    ("size" to KmAnnotationArgument.IntValue(size)),
+                    ("isSigned" to KmAnnotationArgument.BooleanValue(isSigned))
+            )
             is AnnotationStub.CStruct.VarType -> mapOfNotNull(
                     ("size" to KmAnnotationArgument.LongValue(size)),
                     ("align" to KmAnnotationArgument.IntValue(align))
