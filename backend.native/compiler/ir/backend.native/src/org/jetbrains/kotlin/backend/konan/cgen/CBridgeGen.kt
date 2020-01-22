@@ -1589,8 +1589,7 @@ private fun KotlinStubs.generateMemoryAccessor(isRead: Boolean, valueType: IrTyp
     return fakeAccessor
 }
 
-private fun KotlinStubs.generateReadMemory(builder: IrBuilderWithScope, fieldPointer: IrExpression, isValueType: Boolean, callSite: IrCall): IrExpression {
-    val returnType = callSite.type
+private fun KotlinStubs.generateReadMemory(builder: IrBuilderWithScope, fieldPointer: IrExpression, isValueType: Boolean, returnType: IrType): IrExpression {
     if (!isValueType) {
         val fn = if (returnType.isSubtypeOfClass(symbols.interopCPointer)) {
             symbols.interopInterpretCPointer
@@ -1645,8 +1644,7 @@ private fun KotlinStubs.convertIfNeeded(arg: IrExpression, builder: IrBuilderWit
 }
 
 
-private fun KotlinStubs.generateWriteMemory(builder: IrBuilderWithScope, fieldPointer: IrExpression, callSite: IrCall): IrExpression {
-    val arg = callSite.getValueArgument(0)!!
+private fun KotlinStubs.generateWriteMemory(builder: IrBuilderWithScope, fieldPointer: IrExpression, arg: IrExpression): IrExpression {
     val propertyClassifier = arg.type.classOrNull!!
     // TODO: Can we use unsigned types directly?
     val memoryValueType = if (propertyClassifier in symbols.unsignedIntegerClasses) {
@@ -1679,8 +1677,32 @@ internal fun KotlinStubs.generateMemberAt(callSite: IrCall, builder: IrBuilderWi
         it.putValueArgument(0, offset)
     }
     return when {
-        accessor.isSetter -> generateWriteMemory(builder, fieldPointer, callSite)
-        accessor.isGetter -> generateReadMemory(builder, fieldPointer, isValueType, callSite)
+        accessor.isSetter -> {
+            val arg = callSite.getValueArgument(0)!!
+            val valueToWrite = if (arg.type.isCEnumType()) {
+                convertEnumToIntegral(builder, arg)
+            } else {
+                arg
+            }
+            generateWriteMemory(builder, fieldPointer, valueToWrite)
+        }
+        accessor.isGetter -> {
+            val typeToRead = if (callSite.type.isCEnumType()) {
+                val enumClass = callSite.type.getClass()!!
+                enumClass.declarations
+                        .filterIsInstance<IrProperty>()
+                        .single { it.name.asString() == "value" }
+                        .getter!!.returnType
+            } else {
+                callSite.type
+            }
+            val result = generateReadMemory(builder, fieldPointer, isValueType, typeToRead)
+            if (callSite.type.isCEnumType()) {
+                convertIntegralToEnum(builder, result, callSite.type)
+            } else {
+                result
+            }
+        }
         else -> error("Unexpected function: ${accessor.name}")
     }
 }
@@ -1699,15 +1721,8 @@ internal fun KotlinStubs.generateBitField(callSite: IrCall, builder: IrBuilderWi
         accessor.isSetter -> {
             // Convert argument.
             val argument = callSite.getValueArgument(0)!!
-
             val argumentToWrite = if (argument.type.isCEnumType()) {
-                val enumClass = argument.type.getClass()!!
-                val value = enumClass.declarations
-                        .filterIsInstance<IrProperty>()
-                        .single { it.name.asString() == "value" }
-                builder.irCall(value.getter!!).also {
-                    it.dispatchReceiver = argument
-                }
+                convertEnumToIntegral(builder, argument)
             } else {
                 argument
             }
@@ -1727,22 +1742,33 @@ internal fun KotlinStubs.generateBitField(callSite: IrCall, builder: IrBuilderWi
                 it.putValueArgument(2, size)
                 it.putValueArgument(3, isSigned)
             }
-
             when {
-                accessor.returnType.isCEnumType() -> {
-                    val enumClass = accessor.returnType.getClass()!!
-                    val companionClass = enumClass.declarations.filterIsInstance<IrClass>().single { it.isCompanion }
-                    val byValue = companionClass.simpleFunctions().single { it.name.asString() == "byValue" }
-                    val byValueArg = convertIfNeeded(readValue, builder, byValue.valueParameters.first().type.classOrNull!!)
-                    builder.irCall(byValue).apply {
-                        dispatchReceiver = builder.irGetObject(companionClass.symbol)
-                        putValueArgument(0, byValueArg)
-                    }
-                }
+                accessor.returnType.isCEnumType() -> convertIntegralToEnum(builder,readValue, accessor.returnType)
                 else -> convertIfNeeded(readValue, builder, accessor.returnType.classOrNull!!)
             }
         }
         else -> error("Unexpected function: ${accessor.name}")
+    }
+}
+
+internal fun KotlinStubs.convertEnumToIntegral(builder: IrBuilderWithScope, enumValue: IrExpression): IrExpression {
+    val enumClass = enumValue.type.getClass()!!
+    val valueProperty = enumClass.declarations
+            .filterIsInstance<IrProperty>()
+            .single { it.name.asString() == "value" }
+    return builder.irCall(valueProperty.getter!!).also {
+        it.dispatchReceiver = enumValue
+    }
+}
+
+internal fun KotlinStubs.convertIntegralToEnum(builder: IrBuilderWithScope, value: IrExpression, enumType: IrType): IrExpression {
+    val enumClass = enumType.getClass()!!
+    val companionClass = enumClass.declarations.filterIsInstance<IrClass>().single { it.isCompanion }
+    val byValue = companionClass.simpleFunctions().single { it.name.asString() == "byValue" }
+    val byValueArg = convertIfNeeded(value, builder, byValue.valueParameters.first().type.classOrNull!!)
+    return builder.irCall(byValue).apply {
+        dispatchReceiver = builder.irGetObject(companionClass.symbol)
+        putValueArgument(0, byValueArg)
     }
 }
 
