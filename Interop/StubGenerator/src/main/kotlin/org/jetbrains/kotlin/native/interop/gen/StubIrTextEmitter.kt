@@ -19,7 +19,8 @@ class StubIrTextEmitter(
         private val context: StubIrContext,
         private val builderResult: StubIrBuilderResult,
         private val bridgeBuilderResult: BridgeBuilderResult,
-        private val omitEmptyLines: Boolean = false
+        private val omitEmptyLines: Boolean = false,
+        private val uniqueNames: UniqueNames
 ) {
     private val kotlinFile = bridgeBuilderResult.kotlinFile
     private val nativeBridges = bridgeBuilderResult.nativeBridges
@@ -28,9 +29,6 @@ class StubIrTextEmitter(
 
     private val pkgName: String
         get() = context.configuration.pkgName
-
-    private val StubContainer.isTopLevelContainer: Boolean
-        get() = this == builderResult.stubs
 
     /**
      * The output currently used by the generator.
@@ -279,10 +277,6 @@ class StubIrTextEmitter(
         }
     }
 
-    // Try to use the provided name. If failed, mangle it with underscore and try again:
-    private tailrec fun getTopLevelPropertyDeclarationName(scope: KotlinScope, name: String): String =
-            scope.declareProperty(name) ?: getTopLevelPropertyDeclarationName(scope, name + "_")
-
     private fun emitProperty(element: PropertyStub, owner: StubContainer?) {
         if (element in bridgeBuilderResult.excludedStubs) return
 
@@ -290,11 +284,7 @@ class StubIrTextEmitter(
         val override = if (element.isOverride) "override " else ""
         val modality = "$modifier$override"
         val receiver = if (element.receiverType != null) "${renderStubType(element.receiverType)}." else ""
-        val name = if (owner?.isTopLevelContainer == true) {
-            getTopLevelPropertyDeclarationName(kotlinFile, element.name)
-        } else {
-            element.name.asSimpleName()
-        }
+        val name =  uniqueNames.uniqueNameFor(element).asSimpleName()
         val header = "$receiver$name: ${renderStubType(element.type)}"
 
         if (element.kind is PropertyStub.Kind.Val && !nativeBridges.isSupported(element.kind.getter)

@@ -124,26 +124,34 @@ class StubIrDriver(
         outCFile.bufferedWriter().use {
             emitCFile(context, it, entryPoint, bridgeBuilderResult.nativeBridges)
         }
-
+        val uniqueNames = StubIrNameAmbiguityResolver(context, builderResult).resolve()
         return when (context.generationMode) {
             GenerationMode.SOURCE_CODE -> {
-                emitSourceCode(outKtFile(), builderResult, bridgeBuilderResult)
+                emitSourceCode(outKtFile(), builderResult, bridgeBuilderResult, uniqueNames)
             }
-            GenerationMode.METADATA -> emitMetadata(builderResult, moduleName)
+            GenerationMode.METADATA -> {
+                emitMetadata(builderResult, moduleName, uniqueNames)
+            }
         }
     }
 
     private fun emitSourceCode(
-            outKtFile: File, builderResult: StubIrBuilderResult, bridgeBuilderResult: BridgeBuilderResult
+            outKtFile: File,
+            builderResult: StubIrBuilderResult,
+            bridgeBuilderResult: BridgeBuilderResult,
+            uniqueNames: UniqueNames
     ): Result.SourceCode {
         outKtFile.bufferedWriter().use { ktFile ->
-            StubIrTextEmitter(context, builderResult, bridgeBuilderResult).emit(ktFile)
+            StubIrTextEmitter(context, builderResult, bridgeBuilderResult, uniqueNames = uniqueNames).emit(ktFile)
         }
         return Result.SourceCode
     }
 
-    private fun emitMetadata(builderResult: StubIrBuilderResult, moduleName: String) =
-            Result.Metadata(StubIrMetadataEmitter(context, builderResult, moduleName).emit())
+    private fun emitMetadata(
+            builderResult: StubIrBuilderResult,
+            moduleName: String,
+            uniqueNames: UniqueNames
+    ) = Result.Metadata(StubIrMetadataEmitter(context, builderResult, moduleName, uniqueNames).emit())
 
     private fun emitCFile(context: StubIrContext, cFile: Appendable, entryPoint: String?, nativeBridges: NativeBridges) {
         val out = { it: String -> cFile.appendln(it) }

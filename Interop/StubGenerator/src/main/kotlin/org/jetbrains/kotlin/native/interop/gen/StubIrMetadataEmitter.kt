@@ -12,7 +12,8 @@ import org.jetbrains.kotlin.utils.addIfNotNull
 class StubIrMetadataEmitter(
         private val context: StubIrContext,
         private val builderResult: StubIrBuilderResult,
-        private val moduleName: String
+        private val moduleName: String,
+        private val uniqueNames: UniqueNames
 ) {
     fun emit(): KlibModuleMetadata {
         val annotations = emptyList<KmAnnotation>()
@@ -21,7 +22,11 @@ class StubIrMetadataEmitter(
     }
 
     private fun emitModuleFragments(): List<KmModuleFragment> =
-            ModuleMetadataEmitter(context.configuration.pkgName, builderResult.stubs).emit().let(::listOf)
+            ModuleMetadataEmitter(
+                    context.configuration.pkgName,
+                    builderResult.stubs,
+                    uniqueNames
+            ).emit().let(::listOf)
 }
 
 /**
@@ -29,7 +34,8 @@ class StubIrMetadataEmitter(
  */
 internal class ModuleMetadataEmitter(
         private val packageFqName: String,
-        private val module: SimpleStubContainer
+        private val module: SimpleStubContainer,
+        private val uniqueNames: UniqueNames
 ) {
 
     fun emit(): KmModuleFragment {
@@ -131,7 +137,8 @@ internal class ModuleMetadataEmitter(
 
         override fun visitProperty(element: PropertyStub, data: VisitingContext) =
                 with (MappingExtensions(data.typeParametersInterner)) {
-                    KmProperty(element.flags, element.name, element.getterFlags, element.setterFlags).also { km ->
+                    val propertyName = uniqueNames.uniqueNameFor(element)
+                    KmProperty(element.flags, propertyName, element.getterFlags, element.setterFlags).also { km ->
                         element.annotations.mapTo(km.annotations) { it.map() }
                         km.uniqId = data.uniqIds.uniqIdForProperty(element)
                         km.returnType = element.type.map()
