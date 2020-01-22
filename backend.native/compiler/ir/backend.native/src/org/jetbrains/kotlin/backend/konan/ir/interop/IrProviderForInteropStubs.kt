@@ -33,6 +33,7 @@ internal class IrProviderForInteropStubs(
         is IrTypeAliasSymbol -> provideIrTypeAlias(symbol)
         is IrClassSymbol -> provideIrClass(symbol)
         is IrConstructorSymbol -> provideIrConstructor(symbol)
+        is IrFieldSymbol -> provideIrField(symbol)
         else -> error("Unsupported interop declaration: symbol=$symbol, descriptor=${symbol.descriptor}")
     }
 
@@ -101,6 +102,22 @@ internal class IrProviderForInteropStubs(
 
     private fun createConstructorDeclaration(symbol: IrConstructorSymbol): IrLazyConstructor =
             IrLazyConstructor(
+                    UNDEFINED_OFFSET, UNDEFINED_OFFSET,
+                    IrDeclarationOrigin.IR_EXTERNAL_DECLARATION_STUB,
+                    symbol, declarationStubGenerator, declarationStubGenerator.typeTranslator
+            )
+
+    private fun provideIrField(symbol: IrFieldSymbol): IrLazyField {
+        val type = declarationStubGenerator.typeTranslator.translateType(symbol.descriptor.type)
+        return declarationStubGenerator.symbolTable.declareField(
+                UNDEFINED_OFFSET, UNDEFINED_OFFSET,
+                IrDeclarationOrigin.IR_EXTERNAL_DECLARATION_STUB,
+                symbol.descriptor, type, fieldFactory = this::createFieldDeclaration
+        ) as IrLazyField
+    }
+
+    private fun createFieldDeclaration(symbol: IrFieldSymbol): IrLazyField =
+            IrLazyField(
                     UNDEFINED_OFFSET, UNDEFINED_OFFSET,
                     IrDeclarationOrigin.IR_EXTERNAL_DECLARATION_STUB,
                     symbol, declarationStubGenerator, declarationStubGenerator.typeTranslator
