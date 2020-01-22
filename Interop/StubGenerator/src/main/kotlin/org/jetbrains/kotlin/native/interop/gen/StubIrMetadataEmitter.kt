@@ -312,6 +312,7 @@ private class MappingExtensions(
                 Flag.IS_FINAL.takeIf { this is ClassStub.Simple && this.modality == ClassStubModality.NONE },
                 Flag.Class.IS_COMPANION_OBJECT.takeIf { this is ClassStub.Companion },
                 Flag.Class.IS_CLASS.takeIf { this is ClassStub.Simple },
+                Flag.Class.IS_INTERFACE.takeIf { this is ClassStub.Simple && this.modality == ClassStubModality.INTERFACE },
                 Flag.Class.IS_ENUM_CLASS.takeIf { this is ClassStub.Enum }
         )
 
