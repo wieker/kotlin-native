@@ -493,6 +493,7 @@ class StubIrTextEmitter(
         is AnnotationStub.CStruct.BitField -> error("")
         is AnnotationStub.CStruct.VarType -> error("")
         is AnnotationStub.CGlobalAccess -> error("")
+        is AnnotationStub.ConstantValue -> error("")
     }
 
     private fun renderEnumEntry(enumEntryStub: EnumEntryStub): String =

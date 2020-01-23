@@ -867,6 +867,10 @@ private class InteropTransformer(val context: Context, override val irFile: IrFi
         if (function.annotations.hasAnnotation(RuntimeNames.memberAt)) {
             return generateWithStubs { generateMemberAt(expression, builder) }
         }
+
+        function.annotations.firstOrNull { it.symbol.descriptor.fqNameSafe.toString().startsWith(RuntimeNames.constantValue.asString()) }?.let {
+            return it.getValueArgument(0)!!
+        }
         if (function.annotations.hasAnnotation(RuntimeNames.bitField)) {
             return generateWithStubs { generateBitField(expression, builder) }
         }

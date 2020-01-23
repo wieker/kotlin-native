@@ -54,7 +54,7 @@ public annotation class CCall(val id: String) {
  * Collection of annotations that allow to store
  * integral value of enum entry.
  */
-public object CEnumEntryValue {
+public object ConstantValue {
     @Retention(AnnotationRetention.BINARY)
     annotation class Byte(val value: kotlin.Byte)
     @Retention(AnnotationRetention.BINARY)
@@ -71,6 +71,12 @@ public object CEnumEntryValue {
     annotation class UInt(val value: kotlin.UInt)
     @Retention(AnnotationRetention.BINARY)
     annotation class ULong(val value: kotlin.ULong)
+    @Retention(AnnotationRetention.BINARY)
+    annotation class Float(val value: kotlin.Float)
+    @Retention(AnnotationRetention.BINARY)
+    annotation class Double(val value: kotlin.Double)
+    @Retention(AnnotationRetention.BINARY)
+    annotation class String(val value: kotlin.String)
 }
 
 /**

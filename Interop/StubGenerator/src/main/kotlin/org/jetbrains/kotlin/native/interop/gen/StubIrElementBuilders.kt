@@ -31,13 +31,25 @@ internal class MacroConstantStubBuilder(
             is FloatingConstantDef -> {
                 val literal = context.tryCreateDoubleStub(constant.type, constant.value) ?: return emptyList()
                 val kotlinType = context.mirror(constant.type).argType.toStubIrType()
-                val getter = PropertyAccessor.Getter.SimpleGetter(constant = literal)
+                val getter = when (context.generationMode) {
+                    GenerationMode.SOURCE_CODE -> PropertyAccessor.Getter.SimpleGetter(constant = literal)
+                    GenerationMode.METADATA -> PropertyAccessor.Getter.ExternalGetter(listOf(AnnotationStub.ConstantValue(literal)))
+                }
                 PropertyStub(kotlinName, kotlinType, PropertyStub.Kind.Val(getter), origin = origin)
             }
             is StringConstantDef -> {
-                val literal = StringConstantStub(constant.value.quoteAsKotlinLiteral())
+                val getter = when (context.generationMode) {
+                    GenerationMode.SOURCE_CODE -> {
+                        val literal = StringConstantStub(constant.value.quoteAsKotlinLiteral())
+                        PropertyAccessor.Getter.SimpleGetter(constant = literal)
+                    }
+                    GenerationMode.METADATA -> {
+                        val annotation = AnnotationStub.ConstantValue(StringConstantStub(constant.value))
+                        PropertyAccessor.Getter.ExternalGetter(listOf(annotation))
+                    }
+                }
                 val kotlinType = KotlinTypes.string.toStubIrType()
-                val getter = PropertyAccessor.Getter.SimpleGetter(constant = literal)
+
                 PropertyStub(kotlinName, kotlinType, PropertyStub.Kind.Val(getter), origin = origin)
             }
             else -> return emptyList()

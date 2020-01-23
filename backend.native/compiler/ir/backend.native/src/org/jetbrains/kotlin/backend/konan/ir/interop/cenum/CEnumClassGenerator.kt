@@ -36,7 +36,7 @@ internal class CEnumClassGenerator(
     override val typeTranslator: TypeTranslator = context.typeTranslator
 
     companion object {
-        private val cEnumEntryValueAnnotationName = FqName("kotlinx.cinterop.internal.CEnumEntryValue")
+        private val cEnumEntryValueAnnotationName = FqName("kotlinx.cinterop.internal.ConstantValue")
         private val cEnumEntryValueTypes = setOf(
                 "Byte", "Short", "Int", "Long",
                 "UByte", "UShort", "UInt", "ULong"

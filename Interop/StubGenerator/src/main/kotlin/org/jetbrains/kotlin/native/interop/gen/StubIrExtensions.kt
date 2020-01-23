@@ -78,4 +78,4 @@ fun IntegralConstantStub.determineEnumEntryClassifier(): Classifier = when (size
     4 -> if (isSigned) "Int" else "UInt"
     8 -> if (isSigned) "Long" else "ULong"
     else -> error("Integral constant with unexpected size of ${size}.")
-}.let { Classifier.topLevel(cinteropInternalPackage, "CEnumEntryValue").nested(it) }
+}.let { Classifier.topLevel(cinteropInternalPackage, "ConstantValue").nested(it) }

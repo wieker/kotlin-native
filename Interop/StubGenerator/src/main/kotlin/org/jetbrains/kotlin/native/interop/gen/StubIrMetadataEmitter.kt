@@ -245,20 +245,13 @@ private class MappingExtensions(
                 Flag.IS_PUBLIC,
                 Flag.Property.IS_DECLARATION,
                 Flag.HAS_ANNOTATIONS.takeIf { annotations.isNotEmpty() },
+                Flag.Property.HAS_CONSTANT.takeIf { kind is PropertyStub.Kind.Constant },
+                Flag.Property.HAS_GETTER.takeIf { kind !is PropertyStub.Kind.Constant },
+                Flag.Property.HAS_SETTER.takeIf { kind is PropertyStub.Kind.Var },
                 when (kind) {
                     is PropertyStub.Kind.Val -> null
                     is PropertyStub.Kind.Var -> Flag.Property.IS_VAR
                     is PropertyStub.Kind.Constant -> Flag.Property.IS_CONST
-                },
-                when (kind) {
-                    is PropertyStub.Kind.Constant -> null
-                    is PropertyStub.Kind.Val,
-                    is PropertyStub.Kind.Var -> Flag.Property.HAS_GETTER
-                },
-                when (kind) {
-                    is PropertyStub.Kind.Constant -> null
-                    is PropertyStub.Kind.Val -> null
-                    is PropertyStub.Kind.Var -> Flag.Property.HAS_SETTER
                 }
         ) or modifier.flags
 
@@ -408,6 +401,9 @@ private class MappingExtensions(
             )
             is AnnotationStub.CGlobalAccess -> mapOfNotNull(
                     ("globalName" to globalName).asAnnotationArgument()
+            )
+            is AnnotationStub.ConstantValue -> mapOfNotNull(
+                    ("value" to constant.mapToAnnotationArgument())
             )
         }
         return KmAnnotation(classifier.fqNameSerialized, args)

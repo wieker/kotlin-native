@@ -225,9 +225,30 @@ sealed class AnnotationStub(val classifier: Classifier) {
     class CGlobalAccess(val globalName: String) :
             AnnotationStub(Classifier.topLevel(cinteropInternalPackage, "CGlobalAccess"))
 
-    private companion object {
-        val cCallClassifier = Classifier.topLevel(cinteropInternalPackage, "CCall")
-        val cStructClassifier = Classifier.topLevel(cinteropInternalPackage, "CStruct")
+    class ConstantValue(val constant: ConstantStub) :
+            AnnotationStub(Classifier.topLevel(cinteropInternalPackage, "ConstantValue").nested(determiteConstantType(constant)))
+
+    companion object {
+        private val cCallClassifier = Classifier.topLevel(cinteropInternalPackage, "CCall")
+        private val cStructClassifier = Classifier.topLevel(cinteropInternalPackage, "CStruct")
+
+        private fun determiteConstantType(constant: ConstantStub): String = when (constant) {
+            is StringConstantStub -> "String"
+            is IntegralConstantStub -> constant.typeName()
+            is DoubleConstantStub -> when (constant.size) {
+                4 -> "Float"
+                8 -> "Double"
+                else -> error("Unexpected real type size ${constant.size}!")
+            }
+        }
+
+        private fun IntegralConstantStub.typeName(): String = when (size) {
+            1 -> if (isSigned) "Byte" else "UByte"
+            2 -> if (isSigned) "Short" else "UShort"
+            4 -> if (isSigned) "Int" else "UInt"
+            8 -> if (isSigned) "Long" else "ULong"
+            else -> error("Integral constant with unexpected size of ${size}.")
+        }
     }
 }
 

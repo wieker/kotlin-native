@@ -10,6 +10,7 @@ object RuntimeNames {
     val exportForCompilerAnnotation = FqName("kotlin.native.internal.ExportForCompiler")
     val exportTypeInfoAnnotation = FqName("kotlin.native.internal.ExportTypeInfo")
     val cCall = FqName("kotlinx.cinterop.internal.CCall")
+    val constantValue = FqName("kotlinx.cinterop.internal.ConstantValue")
     val memberAt = FqName("kotlinx.cinterop.internal.CStruct.MemberAt")
     val bitField = FqName("kotlinx.cinterop.internal.CStruct.BitField")
     val cGlobalAccess = FqName("kotlinx.cinterop.internal.CGlobalAccess")
