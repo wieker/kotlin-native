@@ -28,6 +28,7 @@ class StubIrMetadataEmitter(
                     uniqueNames
             ).emit().let { kmModuleFragment ->
                 // We need to create module fragment for each part of package name.
+                // TODO: Move it to kotlinx-metadata-klib.
                 val pkgName = context.configuration.pkgName
                 val fakePackages = pkgName.mapIndexedNotNull { idx, char ->
                     if (char == '.') idx else null
@@ -138,6 +139,7 @@ internal class ModuleMetadataEmitter(
         override fun visitFunction(element: FunctionStub, data: VisitingContext) =
                 with (MappingExtensions(data.typeParametersInterner)) {
                     KmFunction(element.flags, element.name).also { km ->
+                        km.receiverParameterType = element.receiver?.type?.map()
                         element.typeParameters.mapTo(km.typeParameters) { it.map() }
                         element.parameters.mapTo(km.valueParameters) { it.map() }
                         element.annotations.mapTo(km.annotations) { it.map() }
