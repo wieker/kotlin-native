@@ -130,7 +130,7 @@ private class ObjCMethodStubBuilder(
         external = (container !is ObjCProtocol)
         modifier = when (container) {
             is ObjCClass -> InheritanceModifier.OPEN
-            is ObjCProtocol -> InheritanceModifier.ABSTRACT
+            is ObjCProtocol -> if (method.isOptional) InheritanceModifier.OPEN else InheritanceModifier.ABSTRACT
             is ObjCCategory -> InheritanceModifier.FINAL
         }
         receiver = if (container is ObjCCategory) {

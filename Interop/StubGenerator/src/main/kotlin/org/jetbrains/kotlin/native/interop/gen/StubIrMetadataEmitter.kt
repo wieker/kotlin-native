@@ -314,7 +314,7 @@ private class MappingExtensions(
         get() = flagsOfNotNull(
                 Flag.HAS_ANNOTATIONS.takeIf { annotations.isNotEmpty() },
                 Flag.IS_PUBLIC,
-                Flag.IS_OPEN.takeIf { this is ClassStub.Simple && this.modality == ClassStubModality.OPEN },
+                Flag.IS_OPEN.takeIf { this is ClassStub.Simple && (this.modality == ClassStubModality.OPEN || this.modality == ClassStubModality.INTERFACE) },
                 Flag.IS_FINAL.takeIf { this is ClassStub.Simple && this.modality == ClassStubModality.NONE },
                 Flag.Class.IS_COMPANION_OBJECT.takeIf { this is ClassStub.Companion },
                 Flag.Class.IS_CLASS.takeIf { this is ClassStub.Simple },

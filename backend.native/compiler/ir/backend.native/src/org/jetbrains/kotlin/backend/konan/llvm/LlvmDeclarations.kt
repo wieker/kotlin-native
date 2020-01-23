@@ -20,6 +20,7 @@ import org.jetbrains.kotlin.name.Name
 
 internal fun createLlvmDeclarations(context: Context): LlvmDeclarations {
     val generator = DeclarationsGeneratorVisitor(context)
+    context.externals.forEach { it.acceptChildrenVoid(generator) }
     context.ir.irModule.acceptChildrenVoid(generator)
     return with(generator) {
         LlvmDeclarations(

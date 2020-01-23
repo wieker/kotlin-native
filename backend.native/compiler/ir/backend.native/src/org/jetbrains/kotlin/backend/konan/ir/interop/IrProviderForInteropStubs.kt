@@ -4,9 +4,15 @@
  */
 package org.jetbrains.kotlin.backend.konan.ir.interop
 
+import org.jetbrains.kotlin.backend.konan.descriptors.findPackage
 import org.jetbrains.kotlin.backend.konan.descriptors.isFromInteropLibrary
+import org.jetbrains.kotlin.backend.konan.isExternalObjCClass
+import org.jetbrains.kotlin.backend.konan.isObjCClass
+import org.jetbrains.kotlin.descriptors.ClassDescriptor
+import org.jetbrains.kotlin.descriptors.PackageFragmentDescriptor
 import org.jetbrains.kotlin.ir.UNDEFINED_OFFSET
 import org.jetbrains.kotlin.ir.declarations.*
+import org.jetbrains.kotlin.ir.declarations.impl.IrFileImpl
 import org.jetbrains.kotlin.ir.declarations.lazy.*
 import org.jetbrains.kotlin.ir.symbols.*
 import org.jetbrains.kotlin.ir.util.*
@@ -21,6 +27,27 @@ internal class IrProviderForInteropStubs(
 
     override lateinit var declarationStubGenerator: DeclarationStubGenerator
 
+
+    val filesMap = mutableMapOf<PackageFragmentDescriptor, IrFile>()
+
+    var module: IrModuleFragment? = null
+        set(value) {
+            if (value == null)
+                error("Provide a valid non-null module")
+            if (field != null)
+                error("Module has already been set")
+            field = value
+            value.files += filesMap.values
+        }
+    private fun irParentFor(descriptor: ClassDescriptor): IrDeclarationContainer {
+        val packageFragmentDescriptor = descriptor.findPackage()
+        return filesMap.getOrPut(packageFragmentDescriptor) {
+            IrFileImpl(NaiveSourceBasedFileEntryImpl("ObjCClasses"), packageFragmentDescriptor).also {
+                this.module?.files?.add(it)
+            }
+        }
+    }
+
     override fun getDeclaration(symbol: IrSymbol): IrLazyDeclarationBase? = when {
         !symbol.descriptor.module.isFromInteropLibrary() -> null
         isSpecialCase(symbol) -> null
@@ -31,7 +58,13 @@ internal class IrProviderForInteropStubs(
         is IrSimpleFunctionSymbol -> provideIrFunction(symbol)
         is IrPropertySymbol -> provideIrProperty(symbol)
         is IrTypeAliasSymbol -> provideIrTypeAlias(symbol)
-        is IrClassSymbol -> provideIrClass(symbol)
+        is IrClassSymbol -> provideIrClass(symbol).also {
+            if (symbol.descriptor.isObjCClass() && !symbol.descriptor.isCompanionObject) {
+                val container = irParentFor(symbol.descriptor)
+                it.parent = container
+                container.declarations += it
+            }
+        }
         is IrConstructorSymbol -> provideIrConstructor(symbol)
         is IrFieldSymbol -> provideIrField(symbol)
         else -> error("Unsupported interop declaration: symbol=$symbol, descriptor=${symbol.descriptor}")
