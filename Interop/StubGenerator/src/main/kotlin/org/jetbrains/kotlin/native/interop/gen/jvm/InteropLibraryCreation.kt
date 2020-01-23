@@ -65,6 +65,7 @@ class ChunkingWriteStrategy(
 
     override fun processPackageParts(parts: List<KmModuleFragment>): List<KmModuleFragment> {
         if (parts.isEmpty()) return emptyList()
+
         val fqName = parts.first().fqName
                 ?: error("KmModuleFragment should have a not-null fqName!")
         val classFragments = parts.flatMap(KmModuleFragment::classes)
@@ -88,6 +89,14 @@ class ChunkingWriteStrategy(
                         }
                     }
                 }
-        return classFragments + packageFragments
+        val result = classFragments + packageFragments
+        return if (result.isEmpty()) {
+            // We still need to emit empty packages because they may
+            // represent parts of package declaration (e.g. platform.[]).
+            // Tooling (e.g. `klib contents`) expects this kind of behaviour.
+            parts
+        } else {
+            result
+        }
     }
 }

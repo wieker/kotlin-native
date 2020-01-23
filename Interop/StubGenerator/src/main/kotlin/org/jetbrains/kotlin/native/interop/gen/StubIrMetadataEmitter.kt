@@ -26,7 +26,18 @@ class StubIrMetadataEmitter(
                     context.configuration.pkgName,
                     builderResult.stubs,
                     uniqueNames
-            ).emit().let(::listOf)
+            ).emit().let { kmModuleFragment ->
+                // We need to create module fragment for each part of package name.
+                val pkgName = context.configuration.pkgName
+                val fakePackages = pkgName.mapIndexedNotNull { idx, char ->
+                    if (char == '.') idx else null
+                }.map { dotPosition ->
+                    KmModuleFragment().also { fragment ->
+                        fragment.fqName = pkgName.substring(0, dotPosition)
+                    }
+                }
+                fakePackages + kmModuleFragment
+            }
 }
 
 /**
