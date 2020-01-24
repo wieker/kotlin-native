@@ -340,6 +340,9 @@ internal class CodeGeneratorVisitor(val context: Context, val lifetimes: Map<IrE
         context.coverage.collectRegions(declaration)
 
         initializeCachedBoxes(context)
+
+        context.requiresRTTI.forEach { it.acceptVoid(this) }
+
         declaration.acceptChildrenVoid(this)
 
         // Note: it is here because it also generates some bitcode.

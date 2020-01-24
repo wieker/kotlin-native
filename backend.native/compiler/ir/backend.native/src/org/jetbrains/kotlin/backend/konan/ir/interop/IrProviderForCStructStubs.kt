@@ -40,6 +40,7 @@ internal class IrProviderForCStructStubs(
         }
 
     override fun getDeclaration(symbol: IrSymbol): IrDeclaration? {
+        if (symbol.isBound) return symbol.owner as IrDeclaration
         if (!symbol.descriptor.module.isFromInteropLibrary()) return null
         val structDescriptor = symbol.findCStructDescriptor(interopBuiltIns)
                 ?: return null

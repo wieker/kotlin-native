@@ -56,6 +56,7 @@ internal class IrProviderForCEnumStubs(
         }
 
     override fun getDeclaration(symbol: IrSymbol): IrDeclaration? {
+        if (symbol.isBound) return symbol.owner as IrDeclaration
         if (!symbol.descriptor.module.isFromInteropLibrary()) return null
         val enumClassDescriptor = symbol.findCEnumDescriptor(interopBuiltIns)
                 ?: return null
