@@ -6,6 +6,7 @@ package org.jetbrains.kotlin.backend.konan.ir.interop
 
 import org.jetbrains.kotlin.backend.konan.descriptors.isFromInteropLibrary
 import org.jetbrains.kotlin.backend.konan.isObjCClass
+import org.jetbrains.kotlin.descriptors.CallableMemberDescriptor
 import org.jetbrains.kotlin.ir.UNDEFINED_OFFSET
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrDeclarationOrigin
@@ -61,19 +62,22 @@ internal class IrProviderForInteropStubs(
         else -> error("Unsupported interop declaration: symbol=$symbol, descriptor=${symbol.descriptor}")
     }
 
-    private fun provideIrFunction(symbol: IrSimpleFunctionSymbol): IrLazyFunction =
-            declarationStubGenerator.symbolTable.declareSimpleFunction(
-                    UNDEFINED_OFFSET, UNDEFINED_OFFSET,
-                    IrDeclarationOrigin.IR_EXTERNAL_DECLARATION_STUB,
-                    symbol.descriptor, this::createFunctionDeclaration
-            ) as IrLazyFunction
-
-    private fun createFunctionDeclaration(symbol: IrSimpleFunctionSymbol) =
+    private fun provideIrFunction(symbol: IrSimpleFunctionSymbol): IrLazyFunction {
+        val origin =
+                if (symbol.descriptor.kind == CallableMemberDescriptor.Kind.FAKE_OVERRIDE)
+                    IrDeclarationOrigin.FAKE_OVERRIDE
+                else IrDeclarationOrigin.IR_EXTERNAL_DECLARATION_STUB
+        return declarationStubGenerator.symbolTable.declareSimpleFunction(
+                UNDEFINED_OFFSET, UNDEFINED_OFFSET,
+                origin,
+                symbol.descriptor) {
             IrLazyFunction(
                     UNDEFINED_OFFSET, UNDEFINED_OFFSET,
-                    IrDeclarationOrigin.IR_EXTERNAL_DECLARATION_STUB,
-                    symbol, declarationStubGenerator, declarationStubGenerator.typeTranslator
+                    origin, it,
+                    declarationStubGenerator, declarationStubGenerator.typeTranslator
             )
+        } as IrLazyFunction
+    }
 
     private fun provideIrProperty(symbol: IrPropertySymbol): IrLazyProperty =
             symbolTable.declareProperty(
