@@ -365,8 +365,8 @@ internal class EnumStubBuilder(
                 name = "value",
                 type = ClassifierStubType(classifier),
                 kind = PropertyStub.Kind.Var(
-                        PropertyAccessor.Getter.SimpleGetter(),
-                        PropertyAccessor.Setter.SimpleSetter()
+                        PropertyAccessor.Getter.ExternalGetter(),
+                        PropertyAccessor.Setter.ExternalSetter()
                 ),
                 origin = StubOrigin.Synthetic.EnumVarValueField(enumDef)
         )

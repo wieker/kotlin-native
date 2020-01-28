@@ -13,9 +13,11 @@ import org.jetbrains.kotlin.backend.common.lower.*
 import org.jetbrains.kotlin.backend.common.peek
 import org.jetbrains.kotlin.backend.common.pop
 import org.jetbrains.kotlin.backend.common.push
+import org.jetbrains.kotlin.backend.jvm.ir.propertyIfAccessor
 import org.jetbrains.kotlin.backend.konan.*
 import org.jetbrains.kotlin.backend.konan.cgen.*
 import org.jetbrains.kotlin.backend.konan.descriptors.allOverriddenFunctions
+import org.jetbrains.kotlin.backend.konan.descriptors.implementedInterfaces
 import org.jetbrains.kotlin.backend.konan.descriptors.synthesizedName
 import org.jetbrains.kotlin.backend.konan.ir.*
 import org.jetbrains.kotlin.backend.konan.ir.companionObject
@@ -845,6 +847,17 @@ private class InteropTransformer(val context: Context, override val irFile: IrFi
         return expression
     }
 
+    private fun IrFunction.isEnumVarValueAccessor(): Boolean {
+        val parent = this.parent as? IrClass ?: return false
+        val parentParent = parent.parent as? IrClass ?: return false
+
+        if (!parentParent.getSuperInterfaces().contains(symbols.interopCEnum.owner)){
+            return false
+        }
+        if (parent.isCompanion) return false
+        return this.isPropertyAccessor && this.propertyIfAccessor.nameForIrSerialization.asString() == "value"
+    }
+
     override fun visitCall(expression: IrCall): IrExpression {
 
         expression.transformChildrenVoid(this)
@@ -866,6 +879,9 @@ private class InteropTransformer(val context: Context, override val irFile: IrFi
         }
         if (function.annotations.hasAnnotation(RuntimeNames.memberAt)) {
             return generateWithStubs { generateMemberAt(expression, builder) }
+        }
+        if (function.isEnumVarValueAccessor()) {
+            return generateWithStubs { generateEnumVarValueAccess(expression, builder) }
         }
 
         function.annotations.firstOrNull { it.symbol.descriptor.fqNameSafe.toString().startsWith(RuntimeNames.constantValue.asString()) }?.let {

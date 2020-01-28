@@ -1788,3 +1788,24 @@ internal fun KotlinStubs.generateGlobalAccess(callSite: IrCall, builder: IrBuild
         it.putValueArgument(0, globalPointer)
     }
 }
+
+internal fun KotlinStubs.generateEnumVarValueAccess(callSite: IrCall, builder: IrBuilderWithScope): IrExpression {
+    val accessor = callSite.symbol.owner
+    val base = builder.irCall(symbols.interopNativePointedRawPtrGetter).also {
+        it.dispatchReceiver = callSite.dispatchReceiver!!
+    }
+    return when {
+        accessor.isGetter -> {
+            val enumClass = accessor.returnType.getClass()!!
+            val enumPrimitiveType = enumClass.properties.single { it.name.asString() == "value" }.getter!!.returnType
+            val readMemory = generateReadMemory(builder, base, true, enumPrimitiveType)
+            return convertIntegralToEnum(builder, readMemory, accessor.returnType)
+        }
+        accessor.isSetter -> {
+            val arg = callSite.getValueArgument(0)!!
+            val valueToWrite = convertEnumToIntegral(builder, arg)
+            generateWriteMemory(builder, base, valueToWrite)
+        }
+        else -> error("")
+    }
+}
