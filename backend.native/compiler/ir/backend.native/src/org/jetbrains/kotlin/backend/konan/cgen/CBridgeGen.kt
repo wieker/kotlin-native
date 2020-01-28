@@ -1517,79 +1517,30 @@ private fun KotlinStubs.reportUnsupportedType(reason: String, type: IrType, loca
 }
 
 private fun KotlinStubs.generateMemoryAccessor(isRead: Boolean, valueType: IrType): IrFunction {
-    val name = if (isRead) {
-        Name.identifier(getUniqueKotlinFunctionReferenceClassName("MemRead"))
-    } else {
-        Name.identifier(getUniqueKotlinFunctionReferenceClassName("MemWrite"))
-    }
-    val fakeAccessorDescriptor = WrappedSimpleFunctionDescriptor()
-
-    val returnType = if (isRead) {
-        valueType
-    } else {
-        symbols.unit.defaultType
-    }
-
-    val fakeAccessor = IrFunctionImpl(
-            UNDEFINED_OFFSET,
-            UNDEFINED_OFFSET,
-            IrDeclarationOrigin.DEFINED,
-            IrSimpleFunctionSymbolImpl(fakeAccessorDescriptor),
-            name,
-            Visibilities.PRIVATE,
-            Modality.FINAL,
-            returnType,
-            isInline = false,
-            isExternal = true,
-            isTailrec = false,
-            isSuspend = false,
-            isExpect = false,
-            isFakeOverride = false,
-            isOperator = false
-    )
-    fakeAccessorDescriptor.bind(fakeAccessor)
-
-    run {
-        val paramDesc = WrappedValueParameterDescriptor()
-        val irValueParameterImpl = IrValueParameterImpl(
-                UNDEFINED_OFFSET,
-                UNDEFINED_OFFSET,
-                IrDeclarationOrigin.DEFINED,
-                IrValueParameterSymbolImpl(paramDesc),
-                Name.identifier("ptr"),
-                0,
-                symbols.nativePtrType,
-                varargElementType = null, isCrossinline = false, isNoinline = false)
-        paramDesc.bind(irValueParameterImpl)
-        fakeAccessor.valueParameters += irValueParameterImpl
-    }
-
-    if (!isRead) {
-        val paramDesc = WrappedValueParameterDescriptor()
-        val irValueParameterImpl = IrValueParameterImpl(
-                UNDEFINED_OFFSET,
-                UNDEFINED_OFFSET,
-                IrDeclarationOrigin.DEFINED,
-                IrValueParameterSymbolImpl(paramDesc),
-                Name.identifier("value"),
-                1,
-                valueType,
-                varargElementType = null, isCrossinline = false, isNoinline = false)
-        paramDesc.bind(irValueParameterImpl)
-        fakeAccessor.valueParameters += irValueParameterImpl
-    }
-
-    val intrinsicType = if (isRead) {
+    val requiredType = if (isRead) {
         "INTEROP_READ_PRIMITIVE"
     } else {
         "INTEROP_WRITE_PRIMITIVE"
     }
-    fakeAccessor.annotations += buildSimpleAnnotation(irBuiltIns, UNDEFINED_OFFSET, UNDEFINED_OFFSET, symbols.typedIntrinsic.owner, intrinsicType)
-
-    return fakeAccessor
+    val nativeMemUtilsClass = symbols.nativeMemUtils.owner
+    return nativeMemUtilsClass.functions.filter {
+        val type = it.annotations.findAnnotation(RuntimeNames.typedIntrinsicAnnotation)?.getAnnotationStringValue()
+        type == requiredType
+    }.first {
+        if (isRead) {
+            it.returnType.classOrNull == valueType.classOrNull
+        } else {
+            it.valueParameters.last().type.classOrNull == valueType.classOrNull
+        }
+    }
 }
 
-private fun KotlinStubs.generateReadMemory(builder: IrBuilderWithScope, fieldPointer: IrExpression, isValueType: Boolean, returnType: IrType): IrExpression {
+private fun KotlinStubs.generateReadMemory(
+        builder: IrBuilderWithScope,
+        fieldPointer: IrExpression,
+        isValueType: Boolean,
+        returnType: IrType
+): IrExpression {
     if (!isValueType) {
         val fn = if (returnType.isSubtypeOfClass(symbols.interopCPointer)) {
             symbols.interopInterpretCPointer
@@ -1609,7 +1560,10 @@ private fun KotlinStubs.generateReadMemory(builder: IrBuilderWithScope, fieldPoi
         }.owner.defaultType
         val memReadFn = generateMemoryAccessor(isRead = true, valueType = memoryValueType)
         val memRead = builder.irCall(memReadFn).also {
-            it.putValueArgument(0, fieldPointer)
+            it.dispatchReceiver = builder.irGetObject(symbols.nativeMemUtils)
+            it.putValueArgument(0, builder.irCall(symbols.interopInterpretNullablePointed).also {
+                it.putValueArgument(0, fieldPointer)
+            })
         }
         return if (propertyClassifier in symbols.unsignedIntegerClasses) {
             val source = symbols.unsignedToSignedOfSameBitWidth.getValue(propertyClassifier)
@@ -1627,7 +1581,11 @@ private fun KotlinStubs.generateReadMemory(builder: IrBuilderWithScope, fieldPoi
     }
 }
 
-private fun KotlinStubs.convertIfNeeded(arg: IrExpression, builder: IrBuilderWithScope, targetClass: IrClassSymbol): IrExpression {
+private fun KotlinStubs.convertIfNeeded(
+        arg: IrExpression,
+        builder: IrBuilderWithScope,
+        targetClass: IrClassSymbol
+): IrExpression {
     val argClass = arg.type.classOrNull!!
     return if (argClass != targetClass) {
         val conversion = symbols.integerConversions.getValue(argClass to targetClass)
@@ -1644,7 +1602,11 @@ private fun KotlinStubs.convertIfNeeded(arg: IrExpression, builder: IrBuilderWit
 }
 
 
-private fun KotlinStubs.generateWriteMemory(builder: IrBuilderWithScope, fieldPointer: IrExpression, arg: IrExpression): IrExpression {
+private fun KotlinStubs.generateWriteMemory(
+        builder: IrBuilderWithScope,
+        fieldPointer: IrExpression,
+        arg: IrExpression
+): IrExpression {
     val propertyClassifier = arg.type.classOrNull!!
     // TODO: Can we use unsigned types directly?
     val memoryValueType = if (propertyClassifier in symbols.unsignedIntegerClasses) {
@@ -1654,11 +1616,13 @@ private fun KotlinStubs.generateWriteMemory(builder: IrBuilderWithScope, fieldPo
     }.owner.defaultType
     val memWriteFn = generateMemoryAccessor(isRead = false, valueType = memoryValueType)
     val valueToWrite = convertIfNeeded(arg, builder, memoryValueType.classOrNull!!)
-    val memWrite = builder.irCall(memWriteFn).also {
-        it.putValueArgument(0, fieldPointer)
+    return builder.irCall(memWriteFn).also {
+        it.dispatchReceiver = builder.irGetObject(symbols.nativeMemUtils)
+        it.putValueArgument(0, builder.irCall(symbols.interopInterpretNullablePointed).also {
+            it.putValueArgument(0, fieldPointer)
+        })
         it.putValueArgument(1, valueToWrite)
     }
-    return memWrite
 }
 
 internal fun KotlinStubs.generateMemberAt(callSite: IrCall, builder: IrBuilderWithScope): IrExpression {
@@ -1771,7 +1735,6 @@ internal fun KotlinStubs.convertIntegralToEnum(builder: IrBuilderWithScope, valu
         putValueArgument(0, byValueArg)
     }
 }
-
 
 internal fun KotlinStubs.generateGlobalAccess(callSite: IrCall, builder: IrBuilderWithScope): IrExpression {
     val cGlobalName = callSite.symbol.owner.getAnnotation(RuntimeNames.cGlobalAccess)!!.getAnnotationStringValue()!!
