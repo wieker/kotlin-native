@@ -412,8 +412,12 @@ internal class EnumStubBuilder(
 
 internal class FunctionStubBuilder(
         override val context: StubsBuildingContext,
-        private val func: FunctionDecl
+        private val func: FunctionDecl,
+        private val skipOverloads: Boolean = false
 ) : StubElementBuilder {
+
+    private fun isOverloading(name: String): Boolean = context.platform == KotlinPlatform.NATIVE && context.isOverloading(name)
+
     override fun build(): List<StubIrElement> {
         val platform = context.platform
         val parameters = mutableListOf<FunctionParameterStub>()
@@ -466,6 +470,8 @@ internal class FunctionStubBuilder(
             context.mirror(func.returnType).argType
         }.toStubIrType()
 
+        if (skipOverloads && isOverloading(func.name))
+            return emptyList()
 
         val annotations: List<AnnotationStub>
         val mustBeExternal: Boolean
