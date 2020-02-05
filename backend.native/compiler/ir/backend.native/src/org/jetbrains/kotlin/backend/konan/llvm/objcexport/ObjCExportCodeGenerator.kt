@@ -23,7 +23,6 @@ import org.jetbrains.kotlin.descriptors.konan.CompiledKlibModuleOrigin
 import org.jetbrains.kotlin.descriptors.konan.CurrentKlibModuleOrigin
 import org.jetbrains.kotlin.ir.declarations.*
 import org.jetbrains.kotlin.ir.expressions.IrClassReference
-import org.jetbrains.kotlin.ir.expressions.IrConstructorCall
 import org.jetbrains.kotlin.ir.expressions.IrVararg
 import org.jetbrains.kotlin.ir.symbols.IrClassSymbol
 import org.jetbrains.kotlin.ir.types.*
@@ -839,10 +838,7 @@ private fun ObjCExportCodeGenerator.generateObjCImp(
 
 private fun ObjCExportCodeGenerator.generateExceptionTypeInfoArray(baseMethod: IrFunction): LLVMValueRef =
         exceptionTypeInfoArrays.getOrPut(baseMethod) {
-            val throwsAnnotation = findThrowsAnnotation(baseMethod)!!
-            val types = (throwsAnnotation.getValueArgument(0) as IrVararg).elements
-                    .map { (it as IrClassReference).symbol.owner as IrClass }
-
+            val types = computesThrowsClasses(baseMethod)
             generateTypeInfoArray(types.toSet())
         }.llvm
 
@@ -852,13 +848,25 @@ private fun ObjCExportCodeGenerator.generateTypeInfoArray(types: Set<IrClass>): 
             codegen.staticData.placeGlobalConstArray("", codegen.kTypeInfoPtr, typeInfos)
         }
 
-private fun findThrowsAnnotation(baseMethod: IrFunction): IrConstructorCall? =
-        if (baseMethod !is IrSimpleFunction || baseMethod.overriddenSymbols.isEmpty()) {
-            baseMethod.annotations.findAnnotation(KonanFqNames.throws)
-        } else {
-            // Note: frontend ensures that all topmost overridden methods have equal @Throws annotations.
-            findThrowsAnnotation(baseMethod.overriddenSymbols.first().owner)
-        }
+private fun computesThrowsClasses(method: IrFunction): List<IrClass> {
+    // Note: frontend ensures that all topmost overridden methods have equal @Throws annotations.
+    // However due to linking different versions of libraries IR could end up not meeting this condition.
+    // Handling this gracefully below.
+
+    if (method is IrSimpleFunction && method.overriddenSymbols.isNotEmpty()) {
+        return computesThrowsClasses(method.overriddenSymbols.first().owner)
+    }
+
+    val throwsVararg = method.annotations.findAnnotation(KonanFqNames.throws)?.getValueArgument(0)
+            ?: return emptyList()
+
+    if (throwsVararg !is IrVararg) error(method.getContainingFile(), throwsVararg, "unexpected vararg")
+
+    return throwsVararg.elements.map {
+        (it as? IrClassReference)?.symbol?.owner as? IrClass
+                ?: error(method.getContainingFile(), it, "unexpected @Throws argument")
+    }
+}
 
 private fun ObjCExportCodeGenerator.generateObjCImpForArrayConstructor(
         target: IrConstructor,
