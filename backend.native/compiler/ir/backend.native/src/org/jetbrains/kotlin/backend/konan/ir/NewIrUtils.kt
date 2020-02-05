@@ -6,6 +6,7 @@
 package org.jetbrains.kotlin.backend.konan.ir
 
 import org.jetbrains.kotlin.backend.common.atMostOne
+import org.jetbrains.kotlin.backend.konan.isKotlinObjCClass
 import org.jetbrains.kotlin.builtins.KotlinBuiltIns
 import org.jetbrains.kotlin.descriptors.Modality
 import org.jetbrains.kotlin.descriptors.Visibilities
@@ -42,6 +43,12 @@ fun IrClass.isKotlinArray() = this.fqNameForIrSerialization == KotlinBuiltIns.FQ
 
 val IrClass.superClasses get() = this.superTypes.map { it.classifierOrFail as IrClassSymbol }
 fun IrClass.getSuperClassNotAny() = this.superClasses.map { it.owner }.atMostOne { !it.isInterface && !it.isAny() }
+
+// We do not emit RTTI for external Obj-C classes.
+fun IrClass.getRuntimeSuperClassNotAny(): IrClass? = when {
+    this.isKotlinObjCClass() -> null
+    else -> this.getSuperClassNotAny()
+}
 
 fun IrClass.isAny() = this.fqNameForIrSerialization == KotlinBuiltIns.FQ_NAMES.any.toSafe()
 fun IrClass.isNothing() = this.fqNameForIrSerialization == KotlinBuiltIns.FQ_NAMES.nothing.toSafe()

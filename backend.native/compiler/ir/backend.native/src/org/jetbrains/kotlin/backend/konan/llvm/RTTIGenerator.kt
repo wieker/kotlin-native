@@ -195,10 +195,7 @@ internal class RTTIGenerator(override val context: Context) : ContextUtils {
 
         val instanceSize = getInstanceSize(bodyType, className)
 
-        // TODO: Rollback if we don't need RTTI for Kotlin < Obj-C.
-        val superTypeOrAny = irClass.getSuperClassNotAny().let { superType ->
-            if (superType == null || !superType.requiresRtti()) context.ir.symbols.any.owner else superType
-        }
+        val superTypeOrAny = irClass.getRuntimeSuperClassNotAny() ?: context.ir.symbols.any.owner
         val superType = if (irClass.isAny()) NullPointer(runtime.typeInfoType)
                 else superTypeOrAny.typeInfoPtr
 
